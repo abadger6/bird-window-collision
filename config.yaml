@@ -1,0 +1,81 @@
+# Bird–Window Collision Risk Tool — pilot config.
+# Add a new city by dropping a block under `cities:` and switching `active_city`.
+
+# Google Earth Engine settings.
+gee:
+  # Cloud project registered for Earth Engine (required by GEE since 2024).
+  # Find/create yours at: https://console.cloud.google.com/earth-engine
+  # Example: "ee-yourname". Leave null to trip a clear error at init time.
+  project: "bird-windows"
+
+# GEE assets used across all cities.
+assets:
+  # ALAN — NASA Black Marble daily (gap-filled, moon + atmosphere corrected).
+  # ~500 m resolution. Daily; T3 mean-reduces across migration months for a
+  # stable seasonal signal. VNP46A3 monthly is NOT in the GEE catalog.
+  alan: NASA/VIIRS/002/VNP46A2
+  alan_band: Gap_Filled_DNB_BRDF_Corrected_NTL
+
+# Which migration-months window to composite ALAN over.
+# North American spring migration = Apr–May; fall = Sep–Oct.
+alan_composite:
+  years: [2022, 2023, 2024]
+  months: [4, 5, 9, 10]
+  reducer: mean
+
+# Risk-index weights (§5.2 of the plan). Sum of structure weights = 1.
+weights:
+  structure:
+    facade: 0.5   # w_F: perimeter × height (glass-area proxy)
+    area:   0.2   # w_A: footprint area
+    height: 0.3   # w_H: sigmoid(building height), see height_response below
+  edge: 0.5       # w_E: habitat-edge multiplier magnitude (see habitat below)
+
+# --- Model v2 additions -----------------------------------------------------
+# A. Habitat-edge multiplier — collisions concentrate near parks/water/wood
+#    (Klem 2009). Exponential decay by distance from building centroid.
+habitat:
+  osm_tags:
+    - {leisure: park}
+    - {natural: water}
+    - {natural: wood}
+  decay_m: 200          # ~1/e drop-off distance in meters
+
+# B. Class multiplier applied to norm(L) — 'empty offices, lights on' effect.
+#    Anything not listed → 1.0.
+class_multipliers:
+  office:      1.30     # Loss et al. 2014
+  commercial:  1.20
+  retail:      1.20
+  education:   1.05
+  industrial:  1.00
+  residential: 0.80
+
+# C. Nonlinear H response — sigmoid captures the sharp collision-risk rise
+#    above ~30 m (Loss 2014, Wang 2020). Midpoint/width in meters.
+height_response:
+  midpoint_m: 40
+  slope_m:    20
+
+# --- Cities ---------------------------------------------------------------
+# Switch cities by changing `active_city`. Each city needs:
+#   - bbox: full city bounds (WGS84 lon/lat, minx miny maxx maxy)
+#   - dev_bbox: small area for iterative pipeline dev (avoids 500k+ polygon downloads)
+#   - projected_crs: local projected CRS for accurate area/perimeter in meters
+#   - footprints_geojson: path to the manually-fetched Overture GeoJSON
+#     (produced by: uv run python scripts/fetch_overture_city.py)
+active_city: chicago
+
+cities:
+  chicago:
+    bbox: [-87.9401, 41.6445, -87.5237, 42.0230]
+    # Expanded dev bbox — Loop + Mag Mile + Streeterville + West Loop +
+    # South Loop through McCormick Place (CBCM chronic-offender validation
+    # target). ~35 km² / est. 10–20k buildings.
+    dev_bbox: [-87.6650, 41.8420, -87.6050, 41.9080]
+    projected_crs: EPSG:26971  # NAD83 / Illinois East
+    footprints_geojson: data/cities/chicago.geojson
+
+# --- Output ---------------------------------------------------------------
+output:
+  local_dir: ./data
