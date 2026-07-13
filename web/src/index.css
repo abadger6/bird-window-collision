@@ -1,0 +1,5 @@
+/* Global reset — kepler.gl provides its own scoped styles via
+   styled-components, so we intentionally keep this file minimal. */
+* {
+  box-sizing: border-box;
+}

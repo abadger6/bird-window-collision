@@ -33,3 +33,11 @@ cache/
 
 # OS
 .DS_Store
+
+# React/Vite viewer app
+web/node_modules/
+web/dist/
+web/.vite/
+
+# Local preview server support (Claude Code)
+.claude/preview-root/

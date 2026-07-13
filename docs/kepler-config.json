@@ -1,0 +1,244 @@
+{
+  "version": "v1",
+  "config": {
+    "visState": {
+      "filters": [],
+      "layers": [
+        {
+          "id": "2weogp",
+          "type": "geojson",
+          "config": {
+            "dataId": "oqp2ik",
+            "columnMode": "geojson",
+            "label": "chicago_buildings_dev_scored",
+            "color": [
+              246,
+              209,
+              138
+            ],
+            "highlightColor": [
+              252,
+              242,
+              26,
+              255
+            ],
+            "columns": {
+              "geojson": "_geojson"
+            },
+            "isVisible": true,
+            "visConfig": {
+              "opacity": 0.8,
+              "strokeOpacity": 0.8,
+              "thickness": 0.5,
+              "strokeColor": [
+                183,
+                136,
+                94
+              ],
+              "colorRange": {
+                "colors": [
+                  "#00939C",
+                  "#6BB5B9",
+                  "#AAD7D9",
+                  "#F4B198",
+                  "#DF744E",
+                  "#C22E00"
+                ],
+                "name": "Uber Viz Diverging",
+                "type": "diverging",
+                "category": "Uber"
+              },
+              "strokeColorRange": {
+                "name": "Global Warming",
+                "type": "sequential",
+                "category": "Uber",
+                "colors": [
+                  "#4C0035",
+                  "#880030",
+                  "#B72F15",
+                  "#D6610A",
+                  "#EF9100",
+                  "#FFC300"
+                ]
+              },
+              "radius": 10,
+              "sizeRange": [
+                0,
+                10
+              ],
+              "radiusRange": [
+                0,
+                50
+              ],
+              "heightRange": [
+                0,
+                500
+              ],
+              "elevationScale": 5,
+              "stroked": false,
+              "filled": true,
+              "enable3d": true,
+              "wireframe": false,
+              "fixedHeight": true,
+              "allowHover": true
+            },
+            "hidden": false,
+            "textLabel": []
+          },
+          "visualChannels": {
+            "colorField": {
+              "name": "risk_score",
+              "type": "real"
+            },
+            "colorScale": "quantile",
+            "strokeColorField": null,
+            "strokeColorScale": "quantile",
+            "sizeField": null,
+            "sizeScale": "linear",
+            "heightField": {
+              "name": "height",
+              "type": "real"
+            },
+            "heightScale": "linear",
+            "radiusField": null,
+            "radiusScale": "linear"
+          }
+        }
+      ],
+      "effects": [
+        {
+          "id": "e_elxfno",
+          "type": "lightAndShadow",
+          "isEnabled": true,
+          "parameters": {
+            "timestamp": 1783803180000,
+            "timeMode": "pick",
+            "shadowIntensity": 0.5,
+            "shadowColor": [
+              0,
+              0,
+              0
+            ],
+            "sunLightColor": [
+              255,
+              255,
+              255
+            ],
+            "sunLightIntensity": 1,
+            "ambientLightColor": [
+              255,
+              255,
+              255
+            ],
+            "ambientLightIntensity": 1,
+            "timezone": "America/Los_Angeles"
+          }
+        }
+      ],
+      "annotations": [],
+      "interactionConfig": {
+        "tooltip": {
+          "fieldsToShow": {
+            "oqp2ik": [
+              {
+                "name": "class",
+                "format": null
+              },
+              {
+                "name": "subtype",
+                "format": null
+              },
+              {
+                "name": "height",
+                "format": null
+              },
+              {
+                "name": "footprint_area",
+                "format": null
+              },
+              {
+                "name": "risk_score",
+                "format": null
+              }
+            ]
+          },
+          "compareMode": false,
+          "compareType": "absolute",
+          "enabled": true
+        },
+        "brush": {
+          "size": 0.5,
+          "enabled": false
+        },
+        "geocoder": {
+          "limitSearch": false,
+          "enabled": false
+        },
+        "coordinate": {
+          "enabled": false
+        }
+      },
+      "layerBlending": "additive",
+      "overlayBlending": "normal",
+      "splitMaps": [],
+      "animationConfig": {
+        "currentTime": null,
+        "speed": 1
+      },
+      "editor": {
+        "features": [],
+        "visible": true
+      },
+      "layerOrder": [
+        "2weogp"
+      ]
+    },
+    "mapState": {
+      "bearing": 0,
+      "dragRotate": true,
+      "latitude": 41.875234750000004,
+      "longitude": -87.6335503,
+      "pitch": 50,
+      "zoom": 12.580433268744361,
+      "isSplit": false,
+      "isViewportSynced": true,
+      "isZoomLocked": false,
+      "splitMapViewports": [],
+      "maxPitch": 60,
+      "mapSplitMode": "SINGLE_MAP",
+      "swipeComparePercentage": 50
+    },
+    "mapStyle": {
+      "styleType": "voyager",
+      "topLayerGroups": {},
+      "visibleLayerGroups": {
+        "label": true,
+        "road": true,
+        "border": true,
+        "building": false,
+        "water": true,
+        "land": true,
+        "3d building": false
+      },
+      "threeDBuildingColor": [
+        233.71862868880427,
+        230.92517894351974,
+        226.26942936804556
+      ],
+      "backgroundColor": [
+        0,
+        0,
+        0
+      ],
+      "mapStyles": {}
+    },
+    "uiState": {
+      "mapControls": {
+        "mapLegend": {
+          "active": true
+        }
+      },
+      "locale": "en"
+    }
+  }
+}
