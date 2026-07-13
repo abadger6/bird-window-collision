@@ -11,7 +11,7 @@ export default function App() {
           hazardous to migrating birds. Model uses building geometry (Overture
           Maps), height (LiDAR), nighttime radiance (NASA Black Marble VIIRS),
           and OSM habitat proximity. Dev view: Loop + Streeterville + South
-          Loop through McCormick Place. Model and website created by Alex Badgett{' '}
+          Loop through McCormick Place. Model and website created by Alex Badgett.{' '}
           <a
             href="https://github.com/abadger6/bird-window-collision/blob/main/docs/methodology.md"
             target="_blank"

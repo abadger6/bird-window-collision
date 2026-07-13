@@ -178,7 +178,7 @@
           "enabled": false
         }
       },
-      "layerBlending": "additive",
+      "layerBlending": "normal",
       "overlayBlending": "normal",
       "splitMaps": [],
       "animationConfig": {

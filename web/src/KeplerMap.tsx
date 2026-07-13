@@ -7,7 +7,7 @@
 
 import {useEffect, useRef, useState} from 'react';
 import {useDispatch} from 'react-redux';
-import {addDataToMap} from '@kepler.gl/actions';
+import {addDataToMap, toggleSidePanel} from '@kepler.gl/actions';
 import {processGeojson} from '@kepler.gl/processors';
 import {KeplerGlSchema} from '@kepler.gl/schemas';
 import KeplerGl from '@kepler.gl/components';
@@ -87,6 +87,13 @@ export function KeplerMap() {
             config: parsedConfig,
           }),
         );
+
+        // Collapse the side panel to just its icon strip so first-load
+        // impression is map-forward. Users can click the strip to expand
+        // the Layers / Filters / Interactions panels back out.
+        // Dispatched after addDataToMap because kepler resets activeSidePanel
+        // to 'layer' when the datasets change.
+        dispatch(toggleSidePanel(''));
       } catch (err) {
         console.error('Failed to load map data', err);
         if (!cancelled) setLoadError(String(err));
