@@ -10,7 +10,7 @@
           "config": {
             "dataId": "oqp2ik",
             "columnMode": "geojson",
-            "label": "chicago_buildings_dev_scored",
+            "label": "Predicted risk score (v2 model)",
             "color": [
               246,
               209,
@@ -110,7 +110,7 @@
           "config": {
             "dataId": "oqp2ik",
             "columnMode": "geojson",
-            "label": "Buildings \u2014 CBCM observed strikes",
+            "label": "Observed strikes per building (CBCM 2018\u20132021)",
             "color": [
               40,
               40,
@@ -136,9 +136,9 @@
                 94
               ],
               "colorRange": {
-                "name": "OrRd 6",
-                "type": "sequential",
-                "category": "ColorBrewer",
+                "name": "CBCM strikes (custom)",
+                "type": "custom",
+                "category": "Custom",
                 "colors": [
                   "#FEF0D9",
                   "#FDD49E",
@@ -146,6 +146,32 @@
                   "#FC8D59",
                   "#E34A33",
                   "#B30000"
+                ],
+                "colorMap": [
+                  [
+                    1,
+                    "#FEF0D9"
+                  ],
+                  [
+                    3,
+                    "#FDD49E"
+                  ],
+                  [
+                    10,
+                    "#FDBB84"
+                  ],
+                  [
+                    30,
+                    "#FC8D59"
+                  ],
+                  [
+                    100,
+                    "#E34A33"
+                  ],
+                  [
+                    1039,
+                    "#B30000"
+                  ]
                 ]
               },
               "strokeColorRange": {
@@ -190,7 +216,7 @@
               "name": "cbcm_total",
               "type": "integer"
             },
-            "colorScale": "quantile",
+            "colorScale": "custom",
             "strokeColorField": null,
             "strokeColorScale": "quantile",
             "sizeField": null,
@@ -209,7 +235,7 @@
           "type": "point",
           "config": {
             "dataId": "cbcm",
-            "label": "CBCM observations (points)",
+            "label": "Observed strikes \u2014 individual records (CBCM)",
             "color": [
               201,
               79,
@@ -285,7 +311,7 @@
           "type": "heatmap",
           "config": {
             "dataId": "cbcm",
-            "label": "CBCM observations (heatmap)",
+            "label": "Observed strikes \u2014 density heatmap (CBCM)",
             "color": [
               255,
               203,
