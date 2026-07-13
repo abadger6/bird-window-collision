@@ -239,3 +239,110 @@ def test_edge_weight_zero_is_a_noop_even_with_habitat_column():
     ])
     out = risk.compute(df, DEFAULT_WEIGHTS, edge_weight=0.0)
     assert (out["edge_factor"] == 1.0).all()
+
+
+# ============================================================================
+#  S4 — Selectable L source (VIIRS / SDGSAT pan / SDGSAT blue) + fallback
+# ============================================================================
+
+
+def _sdgsat_frame(rows: list[dict]) -> pd.DataFrame:
+    """Same as _frame but also seeds the SDGSAT columns for L-source tests."""
+    df = pd.DataFrame(rows)
+    for col in (
+        "facade_area", "footprint_area", "height",
+        "alan_radiance", "alan_sdgsat", "alan_sdgsat_blue",
+    ):
+        if col not in df.columns:
+            df[col] = np.nan
+    return df
+
+
+def test_default_lighting_source_is_viirs_and_matches_prior_behavior():
+    """Backward-compat: computing without a source arg must equal computing
+    with source='viirs'. The v2 index behavior is frozen for viirs."""
+    df = _sdgsat_frame([
+        {"facade_area": 1.0, "footprint_area": 1.0, "height": 1.0, "alan_radiance": 10.0, "alan_sdgsat": 999.0},
+        {"facade_area": 2.0, "footprint_area": 2.0, "height": 2.0, "alan_radiance": 20.0, "alan_sdgsat": 999.0},
+    ])
+    default = risk.compute(df, DEFAULT_WEIGHTS)
+    viirs = risk.compute(df, DEFAULT_WEIGHTS, lighting_source="viirs")
+    assert default["risk_raw"].tolist() == pytest.approx(viirs["risk_raw"].tolist())
+    # SDGSAT column shouldn't affect viirs scoring.
+    df_nosdg = df.drop(columns=["alan_sdgsat", "alan_sdgsat_blue"])
+    no_sdg = risk.compute(df_nosdg, DEFAULT_WEIGHTS)
+    assert default["risk_raw"].tolist() == pytest.approx(no_sdg["risk_raw"].tolist())
+
+
+def test_lighting_source_sdgsat_pan_uses_sdgsat_column():
+    """When source is sdgsat_pan, norm(L) comes from alan_sdgsat, not VIIRS.
+    Set VIIRS constant so a norm difference is unambiguously SDGSAT-driven."""
+    df = _sdgsat_frame([
+        {"facade_area": 1.0, "footprint_area": 1.0, "height": 1.0, "alan_radiance": 50.0, "alan_sdgsat": 0.0},
+        {"facade_area": 1.0, "footprint_area": 1.0, "height": 1.0, "alan_radiance": 50.0, "alan_sdgsat": 100.0},
+    ])
+    out = risk.compute(df, DEFAULT_WEIGHTS, lighting_source="sdgsat_pan")
+    # SDGSAT normalizes 0→0, 100→1; risk_raw = structure * norm_L * mults.
+    assert out.loc[0, "norm_L"] == pytest.approx(0.0)
+    assert out.loc[1, "norm_L"] == pytest.approx(1.0)
+    assert not out["L_fallback"].any()
+
+
+def test_lighting_source_sdgsat_blue_uses_blue_column():
+    df = _sdgsat_frame([
+        {"facade_area": 1.0, "footprint_area": 1.0, "height": 1.0,
+         "alan_radiance": 50.0, "alan_sdgsat": 0.0, "alan_sdgsat_blue": 0.0},
+        {"facade_area": 1.0, "footprint_area": 1.0, "height": 1.0,
+         "alan_radiance": 50.0, "alan_sdgsat": 0.0, "alan_sdgsat_blue": 100.0},
+    ])
+    out = risk.compute(df, DEFAULT_WEIGHTS, lighting_source="sdgsat_blue")
+    assert out.loc[0, "norm_L"] == pytest.approx(0.0)
+    assert out.loc[1, "norm_L"] == pytest.approx(1.0)
+
+
+def test_lighting_source_falls_back_to_viirs_on_null_sdgsat():
+    """A building outside SDGSAT scene coverage (alan_sdgsat=NaN) must still
+    get scored — its L comes from VIIRS instead of dropping to NaN."""
+    df = _sdgsat_frame([
+        {"id": "covered",   "facade_area": 1.0, "footprint_area": 1.0, "height": 1.0,
+         "alan_radiance": 5.0,  "alan_sdgsat": 100.0},
+        {"id": "uncovered", "facade_area": 1.0, "footprint_area": 1.0, "height": 1.0,
+         "alan_radiance": 5.0,  "alan_sdgsat": np.nan},
+    ])
+    out = risk.compute(df, DEFAULT_WEIGHTS, lighting_source="sdgsat_pan")
+    assert out["L_fallback"].tolist() == [False, True]
+    # No NaN in risk_raw despite the null SDGSAT input — fallback fixed it.
+    assert out["risk_raw"].notna().all()
+    # L_effective picks SDGSAT for row 0, VIIRS (5.0) for row 1.
+    assert out.loc[0, "L_effective"] == pytest.approx(100.0)
+    assert out.loc[1, "L_effective"] == pytest.approx(5.0)
+
+
+def test_lighting_source_unknown_string_raises():
+    df = _sdgsat_frame([
+        {"facade_area": 1.0, "footprint_area": 1.0, "height": 1.0, "alan_radiance": 5.0},
+    ])
+    with pytest.raises(ValueError, match="lighting_source"):
+        risk.compute(df, DEFAULT_WEIGHTS, lighting_source="jilin_1")
+
+
+def test_lighting_source_sdgsat_missing_column_raises():
+    """Requesting sdgsat_pan when alan_sdgsat wasn't built into the frame
+    should error explicitly — not silently score everyone from VIIRS."""
+    df = pd.DataFrame([
+        {"facade_area": 1.0, "footprint_area": 1.0, "height": 1.0, "alan_radiance": 5.0},
+    ])
+    with pytest.raises(KeyError, match="alan_sdgsat"):
+        risk.compute(df, DEFAULT_WEIGHTS, lighting_source="sdgsat_pan")
+
+
+def test_norm_alan_radiance_still_reflects_viirs_under_sdgsat_source():
+    """norm_alan_radiance stays a VIIRS-only sanity column so plots/inspection
+    can compare it against norm_L regardless of the active lighting source."""
+    df = _sdgsat_frame([
+        {"facade_area": 1.0, "footprint_area": 1.0, "height": 1.0, "alan_radiance": 0.0,  "alan_sdgsat": 100.0},
+        {"facade_area": 1.0, "footprint_area": 1.0, "height": 1.0, "alan_radiance": 10.0, "alan_sdgsat": 0.0},
+    ])
+    out = risk.compute(df, DEFAULT_WEIGHTS, lighting_source="sdgsat_pan")
+    assert out["norm_alan_radiance"].tolist() == pytest.approx([0.0, 1.0])
+    assert out["norm_L"].tolist() == pytest.approx([1.0, 0.0])  # inverted by SDGSAT

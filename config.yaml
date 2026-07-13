@@ -8,7 +8,7 @@ gee:
   # Example: "ee-yourname". Leave null to trip a clear error at init time.
   project: "bird-windows"
 
-# GEE assets used across all cities.
+# GEE + local assets used across all cities.
 assets:
   # ALAN — NASA Black Marble daily (gap-filled, moon + atmosphere corrected).
   # ~500 m resolution. Daily; T3 mean-reduces across migration months for a
@@ -16,12 +16,52 @@ assets:
   alan: NASA/VIIRS/002/VNP46A2
   alan_band: Gap_Filled_DNB_BRDF_Corrected_NTL
 
+  # High-resolution ALAN — SDGSAT-1 Glimmer. Scene-based (no Earth Engine
+  # ImageCollection). Scenes come from the CBAS Open Science Program at
+  # https://www.sdgsat.ac.cn (registration required) and must be downloaded
+  # manually into  data/sdgsat/<city>/  (raw .tif files per scene).
+  # See docs/sdgsat_alan.md for the "why" and the fusion roadmap.
+  alan_hires:
+    product: "SDGSAT-1 Glimmer"
+    # Band mapping. Panchromatic is a separate 10 m single-band file per
+    # scene; RGB comes as a 3-band 40 m file with band 1 = blue (the
+    # collision-relevant channel per Tan et al. 2023). Indices are 1-based
+    # to match rasterio convention. `product_suffix` is a substring used by
+    # scripts/fetch_sdgsat.py to route a file to pan vs. mss.
+    bands:
+      pan:   {index: 1, nm: [444, 910], resolution_m: 10, product_suffix: "PAN"}
+      blue:  {index: 1, nm: [424, 526], resolution_m: 40, product_suffix: "MSS"}
+      green: {index: 2, nm: [505, 612], resolution_m: 40, product_suffix: "MSS"}
+      red:   {index: 3, nm: [600, 894], resolution_m: 40, product_suffix: "MSS"}
+    # Radiometric calibration. Per SDGSAT-1 Glimmer data spec, DN → radiance
+    # via:  radiance = DN * scale + offset  (W·m^-2·sr^-1·µm^-1).
+    # Placeholders — override from the per-scene metadata XML shipped with
+    # each .tif. Conversion is documented in pipeline/alan_hires.py.
+    radiometric:
+      scale: 1.0
+      offset: 0.0
+    # Blend stub for a future VIIRS × SDGSAT fusion step (see sdgsat_alan.md
+    # "Approach — fusion, not replacement"). Not consumed today; MVP samples
+    # both sources in parallel and the risk model picks one via lighting_source.
+    blend:
+      mode: "parallel"          # {parallel, weighted_mean, fusion_stub}
+      viirs_weight: 0.5
+      sdgsat_weight: 0.5
+
 # Which migration-months window to composite ALAN over.
 # North American spring migration = Apr–May; fall = Sep–Oct.
 alan_composite:
   years: [2022, 2023, 2024]
   months: [4, 5, 9, 10]
   reducer: mean
+
+# Which lighting column pipeline/risk.py feeds into the L slot of the index.
+#   viirs       — 500 m Black Marble mean composite (default, unchanged behavior)
+#   sdgsat_pan  — SDGSAT-1 Glimmer 10 m panchromatic
+#   sdgsat_blue — SDGSAT-1 Glimmer 40 m blue band (collision-relevant spectrum)
+# When a SDGSAT column is null for a building (outside scene coverage), the
+# model falls back to alan_radiance so no building drops out of the ranking.
+lighting_source: viirs
 
 # Risk-index weights (§5.2 of the plan). Sum of structure weights = 1.
 weights:
@@ -75,6 +115,15 @@ cities:
     dev_bbox: [-87.6650, 41.8420, -87.6050, 41.9080]
     projected_crs: EPSG:26971  # NAD83 / Illinois East
     footprints_geojson: data/cities/chicago.geojson
+    # SDGSAT-1 Glimmer scenes for the migration-months window. Cloud-free
+    # night scenes covering the dev bbox — 1–3 is typical (sparse revisit).
+    # TODO: populate scene IDs once downloaded. Search the CBAS portal
+    # (https://www.sdgsat.ac.cn) with:
+    #   Sensor = Glimmer Imager (GIU), Cloud < 10%, Night acquisition,
+    #   AOI = Chicago dev_bbox, Date = Apr–May or Sep–Oct 2022–2024.
+    # Scene naming follows KX10_GIU_YYYYMMDD_...__PAN.tif /  __MSS.tif;
+    # drop files into  data/sdgsat/chicago/  and fetch_sdgsat.py picks them up.
+    sdgsat_scenes: []
 
 # --- Output ---------------------------------------------------------------
 output:

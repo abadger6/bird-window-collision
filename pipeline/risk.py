@@ -36,6 +36,17 @@ STRUCTURE_COLUMN_MAP = {
     "height": "height_effective",  # sigmoid-transformed H — see apply_height_response
 }
 
+# S4 — L source registry. Maps the config key to the source column that
+# feeds into the L slot of the risk index. Anything not `viirs` falls back
+# to VIIRS ``alan_radiance`` for buildings where the source column is null
+# (i.e. outside SDGSAT scene coverage), so no building drops out.
+LIGHTING_SOURCES = {
+    "viirs":       "alan_radiance",
+    "sdgsat_pan":  "alan_sdgsat",
+    "sdgsat_blue": "alan_sdgsat_blue",
+}
+VIIRS_L_COLUMN = "alan_radiance"
+
 
 def min_max(series: pd.Series) -> pd.Series:
     """Min–max normalize to [0, 1]. Nulls pass through. Constant series -> 0."""
@@ -82,12 +93,49 @@ def _structure_row(row: pd.Series, weights: dict[str, float]) -> float:
     return sum(w * v for w, v in parts) / total_weight
 
 
+def select_effective_L(
+    gdf: pd.DataFrame, lighting_source: str
+) -> tuple[pd.Series, pd.Series]:
+    """Return (effective_L, is_fallback) for the requested source.
+
+    ``effective_L`` is the L series the index will normalize + multiply into
+    Risk_raw. For non-VIIRS sources we fall back to ``alan_radiance`` where
+    the chosen SDGSAT column is null — SDGSAT scenes rarely cover a whole
+    city, so a plain read would drop uncovered buildings out of the ranking.
+    ``is_fallback`` is a bool series tagging which rows came from VIIRS.
+    """
+    if lighting_source not in LIGHTING_SOURCES:
+        raise ValueError(
+            f"lighting_source={lighting_source!r} not one of "
+            f"{sorted(LIGHTING_SOURCES)}"
+        )
+    src_col = LIGHTING_SOURCES[lighting_source]
+    if src_col not in gdf.columns:
+        raise KeyError(
+            f"lighting_source={lighting_source!r} needs column {src_col!r}; "
+            f"run the appropriate build_alan[_hires] script first"
+        )
+    if lighting_source == "viirs":
+        return gdf[src_col].astype("float64"), pd.Series(False, index=gdf.index)
+
+    if VIIRS_L_COLUMN not in gdf.columns:
+        raise KeyError(
+            f"VIIRS fallback needs column {VIIRS_L_COLUMN!r}; run T3 first"
+        )
+    primary = gdf[src_col].astype("float64")
+    fallback = gdf[VIIRS_L_COLUMN].astype("float64")
+    is_fallback = primary.isna()
+    effective = primary.where(~is_fallback, fallback)
+    return effective, is_fallback
+
+
 def compute(
     gdf: pd.DataFrame,
     weights: dict[str, float],
     height_response: dict[str, float] | None = None,
     class_multipliers: dict[str, float] | None = None,
     edge_weight: float = 0.0,
+    lighting_source: str = "viirs",
 ) -> pd.DataFrame:
     """Attach norm_*, structure_score, risk_raw, and risk_score columns.
 
@@ -98,6 +146,10 @@ def compute(
     ``edge_weight``: w_E in [0, +∞). Requires ``habitat_edge`` column on the
         input frame (populated by pipeline/habitat.py). If 0 or column
         missing, the edge term collapses to a no-op.
+    ``lighting_source``: which column feeds the L slot. See ``LIGHTING_SOURCES``.
+        Default ``"viirs"`` preserves v2 behavior exactly. Non-VIIRS sources
+        fall back to VIIRS ``alan_radiance`` on rows where the source is null,
+        so no building drops out of the ranking.
     """
     _validate_weights(weights)
     out = gdf.copy()
@@ -110,10 +162,22 @@ def compute(
     else:
         out["height_effective"] = out["height"] if "height" in out.columns else np.nan
 
-    for col in ("facade_area", "footprint_area", "height_effective", "alan_radiance"):
+    for col in ("facade_area", "footprint_area", "height_effective"):
         if col not in out.columns:
-            raise KeyError(f"expected column {col!r} in input; run T2/T3 first")
+            raise KeyError(f"expected column {col!r} in input; run T2 first")
         out[f"norm_{col}"] = min_max(out[col])
+
+    # §S4 — pick the L source, fall back to VIIRS on nulls, normalize.
+    # ``norm_alan_radiance`` remains the VIIRS-only norm (for reference /
+    # sanity plots); the risk index multiplies by ``norm_L``, which equals
+    # ``norm_alan_radiance`` under the default lighting_source="viirs".
+    if VIIRS_L_COLUMN not in out.columns:
+        raise KeyError(f"expected column {VIIRS_L_COLUMN!r} in input; run T3 first")
+    out[f"norm_{VIIRS_L_COLUMN}"] = min_max(out[VIIRS_L_COLUMN])
+    effective_L, is_fallback = select_effective_L(out, lighting_source)
+    out["L_effective"] = effective_L
+    out["L_fallback"] = is_fallback
+    out["norm_L"] = min_max(effective_L)
 
     out["structure_score"] = out.apply(_structure_row, axis=1, args=(weights,))
 
@@ -133,7 +197,7 @@ def compute(
 
     out["risk_raw"] = (
         out["structure_score"]
-        * out["norm_alan_radiance"]
+        * out["norm_L"]
         * out["class_multiplier"]
         * out["edge_factor"]
     )
@@ -147,6 +211,7 @@ def run(cfg: dict[str, Any], gdf: pd.DataFrame) -> tuple[pd.DataFrame, dict[str,
     height_response = cfg.get("height_response")
     class_multipliers = cfg.get("class_multipliers") or {}
     edge_weight = float(cfg["weights"].get("edge", 0.0))
+    lighting_source = str(cfg.get("lighting_source", "viirs"))
 
     scored = compute(
         gdf,
@@ -154,6 +219,7 @@ def run(cfg: dict[str, Any], gdf: pd.DataFrame) -> tuple[pd.DataFrame, dict[str,
         height_response=height_response,
         class_multipliers=class_multipliers,
         edge_weight=edge_weight,
+        lighting_source=lighting_source,
     )
 
     valid = int(scored["risk_raw"].notna().sum())
@@ -171,5 +237,7 @@ def run(cfg: dict[str, Any], gdf: pd.DataFrame) -> tuple[pd.DataFrame, dict[str,
         "risk_raw_median": float(scored["risk_raw"].median()) if valid else None,
         "risk_raw_max": float(scored["risk_raw"].max()) if valid else None,
         "top10_ids": top10["id"].tolist() if "id" in top10.columns else [],
+        "lighting_source": lighting_source,
+        "L_fallback_count": int(scored.get("L_fallback", pd.Series(dtype=bool)).sum()),
     }
     return scored, stats
