@@ -9,6 +9,9 @@ pipeline re-runs for any other municipality by adding a block under
 `cities:` in `config.yaml` and switching `active_city`.
 
 Model math + literature citations: [docs/methodology.md](docs/methodology.md).
+Ground-truth validation vs. CBCM: [notebooks/validation_cbcm.ipynb](notebooks/validation_cbcm.ipynb)
+(Spearman ρ = 0.29, ROC-AUC = 0.87 on 4,637 downtown buildings against
+2,485 Chicago Bird Collision Monitors observations).
 Strategy + roadmap: [bird-collision-risk-tool-plan.md](bird-collision-risk-tool-plan.md).
 
 ## Status
@@ -121,14 +124,25 @@ the model-side rationale.
 
 - **Full-city scale-up (Chicago).** Once ALAN batching is stress-tested at
   500k centroids, run the pipeline against the full city bbox and republish.
-- **Validation vs. CBCM data.** Compare our top-ranked buildings against
-  the Chicago Bird Collision Monitors' known-offender list (Field Museum
-  40-year dataset). This is what turns "relative index" into a credible
-  domain claim.
+- **Validation vs. CBCM data.** ✅ First pass done —
+  [notebooks/validation_cbcm.ipynb](notebooks/validation_cbcm.ipynb). On
+  2,485 CBCM observations restricted to the survey hull (4,637
+  buildings): Spearman ρ = 0.29, top-25 precision = 0.24 (vs. 0.005
+  random baseline, 46× lift), PR-AUC = 0.35 for chronic-offender
+  detection. Notebook also writes
+  `data/processed/chicago_buildings_dev_scored_validated.geojson` for a
+  predicted-vs-observed A/B in kepler. Next: FLAP Canada (Toronto) and
+  NYC Bird Alliance data for a multi-city cohort.
 - **Manual-height overrides for landmarks.** Add per-city `landmarks`
   block in config.yaml to hard-code height for buildings where Overture
   LiDAR under-reports (Willis Tower antenna, McCormick Place footprint
   without height).
+- **High-res ALAN (SDGSAT-1 Glimmer).** Replace/augment the 500 m VIIRS
+  lighting term with 40 m RGB / 10 m panchromatic SDGSAT-1 Glimmer — fixes
+  the model's weakest input (resolution) and adds a blue band (the
+  collision-relevant spectrum) in one dataset. Start with a per-building
+  side-by-side sampling experiment, not full fusion. Design:
+  [docs/sdgsat_alan.md](docs/sdgsat_alan.md).
 - **Multi-city cohort.** Add NYC (NYC Bird Alliance data) and Toronto
   (FLAP Canada data). Multi-city moves us off the kepler HTML-export path
   and into an embedded frontend.
@@ -183,6 +197,9 @@ scripts/
   run_scenario.py            # T5 demo CLI
   check_gee_auth.py          # setup smoke test
   inspect_local_footprints.py # dev inspection
+notebooks/
+  validation_cbcm.ipynb      # CBCM ground-truth validation (GitHub-rendered)
+  _build_validation_notebook.py  # regenerator — run to rebuild the .ipynb
 tests/
   test_risk.py               # 22 tests covering v1 + v2 risk math
   test_scenario.py           # 7 tests covering scenario engine
