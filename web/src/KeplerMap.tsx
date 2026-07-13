@@ -7,17 +7,19 @@
 
 import {useEffect, useRef, useState} from 'react';
 import {useDispatch} from 'react-redux';
-import {addDataToMap, toggleSidePanel} from '@kepler.gl/actions';
+import {addDataToMap} from '@kepler.gl/actions';
 import {processGeojson} from '@kepler.gl/processors';
 import {KeplerGlSchema} from '@kepler.gl/schemas';
 import KeplerGl from '@kepler.gl/components';
 
 import type {AppDispatch} from './store';
 
-// Same dataId used in the exported kepler-config.json. Rename in both places
-// if you export a fresh config.
-const DATASET_ID = 'oqp2ik';
-const DATASET_LABEL = 'Chicago buildings — collision risk (dev bbox)';
+// dataIds referenced from kepler-config.json — must match layer.config.dataId
+// there or the layer won't bind to any data and won't render.
+const BLD_DATASET_ID = 'oqp2ik';
+const BLD_DATASET_LABEL = 'Chicago buildings — collision risk (dev bbox)';
+const CBCM_DATASET_ID = 'cbcm';
+const CBCM_DATASET_LABEL = 'CBCM observations 2018–2021';
 
 type Size = {width: number; height: number};
 
@@ -46,20 +48,27 @@ export function KeplerMap() {
     const base = import.meta.env.BASE_URL;
     (async () => {
       try {
-        const [geojsonResp, configResp] = await Promise.all([
+        const [bldResp, cbcmResp, configResp] = await Promise.all([
           fetch(`${base}geojson/chicago_buildings_dev_scored.geojson`),
+          fetch(`${base}geojson/cbcm_points.geojson`),
           fetch(`${base}kepler-config.json`),
         ]);
-        if (!geojsonResp.ok) throw new Error(`GeoJSON ${geojsonResp.status}`);
+        if (!bldResp.ok)   throw new Error(`buildings GeoJSON ${bldResp.status}`);
+        if (!cbcmResp.ok)  throw new Error(`CBCM GeoJSON ${cbcmResp.status}`);
         if (!configResp.ok) throw new Error(`config ${configResp.status}`);
 
-        const geojson = await geojsonResp.json();
-        const configJson = await configResp.json();
+        const [bldGeojson, cbcmGeojson, configJson] = await Promise.all([
+          bldResp.json(),
+          cbcmResp.json(),
+          configResp.json(),
+        ]);
 
         if (cancelled) return;
 
-        const processed = processGeojson(geojson);
-        if (!processed) throw new Error('processGeojson returned null');
+        const bldProcessed  = processGeojson(bldGeojson);
+        const cbcmProcessed = processGeojson(cbcmGeojson);
+        if (!bldProcessed)  throw new Error('processGeojson(buildings) returned null');
+        if (!cbcmProcessed) throw new Error('processGeojson(cbcm) returned null');
 
         // The exported kepler config carries the Mapbox-token-required
         // "voyager" style. Force our token-free Carto Dark Matter style
@@ -79,21 +88,21 @@ export function KeplerMap() {
 
         dispatch(
           addDataToMap({
-            datasets: {
-              info: {id: DATASET_ID, label: DATASET_LABEL},
-              data: processed,
-            },
+            // Order matters: buildings first so its centerMap wins.
+            datasets: [
+              {
+                info: {id: BLD_DATASET_ID,  label: BLD_DATASET_LABEL},
+                data: bldProcessed,
+              },
+              {
+                info: {id: CBCM_DATASET_ID, label: CBCM_DATASET_LABEL},
+                data: cbcmProcessed,
+              },
+            ],
             options: {centerMap: true, readOnly: false},
             config: parsedConfig,
           }),
         );
-
-        // Collapse the side panel to just its icon strip so first-load
-        // impression is map-forward. Users can click the strip to expand
-        // the Layers / Filters / Interactions panels back out.
-        // Dispatched after addDataToMap because kepler resets activeSidePanel
-        // to 'layer' when the datasets change.
-        dispatch(toggleSidePanel(''));
       } catch (err) {
         console.error('Failed to load map data', err);
         if (!cancelled) setLoadError(String(err));

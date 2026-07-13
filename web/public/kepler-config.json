@@ -103,6 +103,232 @@
             "radiusField": null,
             "radiusScale": "linear"
           }
+        },
+        {
+          "id": "bld_cbcm",
+          "type": "geojson",
+          "config": {
+            "dataId": "oqp2ik",
+            "columnMode": "geojson",
+            "label": "Buildings \u2014 CBCM observed strikes",
+            "color": [
+              40,
+              40,
+              55
+            ],
+            "highlightColor": [
+              252,
+              242,
+              26,
+              255
+            ],
+            "columns": {
+              "geojson": "_geojson"
+            },
+            "isVisible": false,
+            "visConfig": {
+              "opacity": 0.9,
+              "strokeOpacity": 0.8,
+              "thickness": 0.5,
+              "strokeColor": [
+                183,
+                136,
+                94
+              ],
+              "colorRange": {
+                "name": "OrRd 6",
+                "type": "sequential",
+                "category": "ColorBrewer",
+                "colors": [
+                  "#FEF0D9",
+                  "#FDD49E",
+                  "#FDBB84",
+                  "#FC8D59",
+                  "#E34A33",
+                  "#B30000"
+                ]
+              },
+              "strokeColorRange": {
+                "name": "Global Warming",
+                "type": "sequential",
+                "category": "Uber",
+                "colors": [
+                  "#4C0035",
+                  "#880030",
+                  "#B72F15",
+                  "#D6610A",
+                  "#EF9100",
+                  "#FFC300"
+                ]
+              },
+              "radius": 10,
+              "sizeRange": [
+                0,
+                10
+              ],
+              "radiusRange": [
+                0,
+                50
+              ],
+              "heightRange": [
+                0,
+                500
+              ],
+              "elevationScale": 5,
+              "stroked": false,
+              "filled": true,
+              "enable3d": true,
+              "wireframe": false,
+              "fixedHeight": true,
+              "allowHover": true
+            },
+            "hidden": false,
+            "textLabel": []
+          },
+          "visualChannels": {
+            "colorField": {
+              "name": "cbcm_total",
+              "type": "integer"
+            },
+            "colorScale": "quantile",
+            "strokeColorField": null,
+            "strokeColorScale": "quantile",
+            "sizeField": null,
+            "sizeScale": "linear",
+            "heightField": {
+              "name": "height",
+              "type": "real"
+            },
+            "heightScale": "linear",
+            "radiusField": null,
+            "radiusScale": "linear"
+          }
+        },
+        {
+          "id": "cbcm_pts",
+          "type": "point",
+          "config": {
+            "dataId": "cbcm",
+            "label": "CBCM observations (points)",
+            "color": [
+              201,
+              79,
+              79
+            ],
+            "highlightColor": [
+              252,
+              242,
+              26,
+              255
+            ],
+            "columns": {
+              "lat": "latitude",
+              "lng": "longitude",
+              "altitude": null
+            },
+            "isVisible": false,
+            "visConfig": {
+              "radius": 6,
+              "fixedRadius": false,
+              "opacity": 0.75,
+              "outline": false,
+              "thickness": 2,
+              "strokeColor": null,
+              "colorRange": {
+                "name": "ColorBrewer Set1-3",
+                "type": "qualitative",
+                "category": "ColorBrewer",
+                "colors": [
+                  "#E41A1C",
+                  "#377EB8",
+                  "#4DAF4A"
+                ]
+              },
+              "strokeColorRange": {
+                "name": "Global Warming",
+                "type": "sequential",
+                "category": "Uber",
+                "colors": [
+                  "#4C0035",
+                  "#880030",
+                  "#B72F15",
+                  "#D6610A",
+                  "#EF9100",
+                  "#FFC300"
+                ]
+              },
+              "radiusRange": [
+                0,
+                50
+              ],
+              "filled": true,
+              "billboard": false,
+              "allowHover": true
+            },
+            "hidden": false,
+            "textLabel": []
+          },
+          "visualChannels": {
+            "colorField": {
+              "name": "status",
+              "type": "string"
+            },
+            "colorScale": "ordinal",
+            "strokeColorField": null,
+            "strokeColorScale": "quantile",
+            "sizeField": null,
+            "sizeScale": "linear"
+          }
+        },
+        {
+          "id": "cbcm_heat",
+          "type": "heatmap",
+          "config": {
+            "dataId": "cbcm",
+            "label": "CBCM observations (heatmap)",
+            "color": [
+              255,
+              203,
+              153
+            ],
+            "highlightColor": [
+              252,
+              242,
+              26,
+              255
+            ],
+            "columns": {
+              "lat": "latitude",
+              "lng": "longitude"
+            },
+            "isVisible": false,
+            "visConfig": {
+              "opacity": 0.8,
+              "colorRange": {
+                "name": "Global Warming",
+                "type": "sequential",
+                "category": "Uber",
+                "colors": [
+                  "#4C0035",
+                  "#880030",
+                  "#B72F15",
+                  "#D6610A",
+                  "#EF9100",
+                  "#FFC300"
+                ]
+              },
+              "radius": 30
+            },
+            "hidden": false,
+            "textLabel": []
+          },
+          "visualChannels": {
+            "weightField": {
+              "name": "count_dead",
+              "type": "integer"
+            },
+            "weightScale": "linear"
+          }
         }
       ],
       "effects": [
@@ -159,6 +385,44 @@
               {
                 "name": "risk_score",
                 "format": null
+              },
+              {
+                "name": "cbcm_total",
+                "format": null
+              },
+              {
+                "name": "cbcm_dead",
+                "format": null
+              }
+            ],
+            "cbcm": [
+              {
+                "name": "status",
+                "format": null
+              },
+              {
+                "name": "species",
+                "format": null
+              },
+              {
+                "name": "dateutc",
+                "format": null
+              },
+              {
+                "name": "collision_time",
+                "format": null
+              },
+              {
+                "name": "count_dead",
+                "format": null
+              },
+              {
+                "name": "count_alive",
+                "format": null
+              },
+              {
+                "name": "location",
+                "format": null
               }
             ]
           },
@@ -190,6 +454,9 @@
         "visible": true
       },
       "layerOrder": [
+        "cbcm_heat",
+        "cbcm_pts",
+        "bld_cbcm",
         "2weogp"
       ]
     },
