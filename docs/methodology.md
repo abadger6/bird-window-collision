@@ -1,8 +1,6 @@
 # Methodology
 
 This document is the source of truth for the risk model as implemented.
-For strategy and roadmap, see
-[bird-collision-risk-tool-plan.md](../bird-collision-risk-tool-plan.md).
 
 ## What we compute
 
